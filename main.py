@@ -18,9 +18,9 @@ def check_redirect(url):
     except requests.Timeout:
         logger.error(f"Timeout occurred while processing URL: {url}")
         return url, "Timeout", None
-    except Exception as e:
+    except requests.RequestException as e:
         logger.error(f"Error occurred while processing URL: {url}: {e}")
-        return url, "error", e
+        return url, "Error", None
 
 
 # Main function
@@ -37,6 +37,7 @@ def main(file_path):
         with ThreadPoolExecutor(max_workers=20) as executor:
             for result in executor.map(check_redirect, urls):
                 results.append(result)
+                logger.info(f"Processed URL: {result[0]}")
 
         # Combine the results with the original data
         updated_data = [[url, redirect_url, status_code] for url, redirect_url, status_code in results]
