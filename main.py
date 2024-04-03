@@ -20,7 +20,7 @@ def check_redirect(url):
         return url, "Timeout", None
     except Exception as e:
         logger.error(f"Error occurred while processing URL: {url}: {e}")
-        return url, "error", None
+        return url, "error", e
 
 
 # Main function
