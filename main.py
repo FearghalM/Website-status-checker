@@ -2,10 +2,16 @@ import csv
 import requests
 from concurrent.futures import ThreadPoolExecutor
 import logging
+from threading import Lock
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+# Lock for thread-safe writing
+write_lock = Lock()
 
 # Function to check redirect for a single URL
 def check_redirect(url):
@@ -22,15 +28,20 @@ def check_redirect(url):
         logger.error(f"Error occurred while processing URL: {url}: {e}")
         return url, "Error", None
 
+def cleanData(data):
+    # Remove empty rows
+    data = [row for row in data if any(row)]
+    return data
 
 # Main function
 def main(file_path):
     try:
         with open(file_path, 'r') as csv_file:
             csv_reader = csv.reader(csv_file)
-            data = list(csv_reader)
+            # Clean the data removing empty rows
+            data = cleanData(list(csv_reader))
 
-        header = data[0]
+        header = data[0]#Default header = Domain,Redirect URL, Status Code
         urls = [row[0] for row in data[1:]]
 
         results = []
@@ -43,10 +54,11 @@ def main(file_path):
         updated_data = [[url, redirect_url, status_code] for url, redirect_url, status_code in results]
 
         # Write the modified data back to the CSV file after processing all URLs
-        with open(file_path, 'w', newline='') as csv_file:
-            csv_writer = csv.writer(csv_file)
-            csv_writer.writerow(header)  # Write header
-            csv_writer.writerows(updated_data)  # Write updated data
+        with write_lock:
+            with open(file_path, 'w', newline='') as csv_file:
+                csv_writer = csv.writer(csv_file)
+                csv_writer.writerow(header)  # Write header
+                csv_writer.writerows(updated_data)  # Write updated data
 
         logger.info("CSV file successfully modified.")
     except FileNotFoundError:
