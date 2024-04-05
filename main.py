@@ -3,6 +3,7 @@ import requests
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
+import time
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -22,21 +23,29 @@ def check_redirect(url):
     except requests.Timeout:
         logger.error(f"Timeout occurred while processing URL: {url}")
         return url, "Timeout", None
+    except requests.ConnectionError as e:
+        logger.error(f"Connection error occurred while processing URL: {url}: {e}")
+        return url, "Connection Error", None
     except requests.RequestException as e:
         logger.error(f"Error occurred while processing URL: {url}: {e}")
         return url, "Error", None
+    
 
-# Function to clean data (remove empty rows)
+# Function to clean data (remove empty rows), remove any rows that are not urls sort and remove duplicates
 def clean_data(data):
     return [row for row in data if any(row)]
 
 # Function to process URLs with ThreadPoolExecutor
 def process_urls_with_threadpool(urls):
     results = []
+    total_domains = len(urls)
+    domains_processed = 0
     with ThreadPoolExecutor(max_workers=20) as executor:
         for result in executor.map(check_redirect, urls):
             results.append(result)
+            domains_processed += 1
             logger.info(f"Processed URL: {result[0]}")
+            logger.info(f"Domains left to process: {total_domains - domains_processed}")
     return results
 
 # Function to write data back to CSV
@@ -50,6 +59,7 @@ def write_data_to_csv(file_path, header, updated_data):
 # Main function
 def main(file_path):
     try:
+        start_time = time.time()
         # Read CSV file
         with open(file_path, 'r') as csv_file:
             csv_reader = csv.reader(csv_file)
@@ -68,6 +78,10 @@ def main(file_path):
         # Write data back to CSV
         write_data_to_csv(file_path, header, updated_data)
 
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"Execution time: {execution_time} seconds")
+        
         logger.info("CSV file successfully modified.")
     except FileNotFoundError:
         logger.error(f"File not found: {file_path}")
