@@ -49,6 +49,9 @@ def main(file_path):
             csv_writer.writerows(updated_data)  # Write updated data
 
         logger.info("CSV file successfully modified.")
+    except FileNotFoundError:
+        logger.error(f"File not found: {file_path}")
+        logger.error("Please make sure the file exists and has data.")
     except Exception as e:
         logger.error(f"Error occurred: {e}")
 
